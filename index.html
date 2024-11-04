@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビンゴカード</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            margin: 20px auto;
+        }
+        td {
+            border: 1px solid #000;
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .marked {
+            background-color: #ccc;
+        }
+        #result {
+            text-align: center;
+            font-size: 24px;
+            color: green;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>ビンゴカード</h1>
+    <div id="bingo-card"></div>
+    <h2 id="result"></h2>
+    <div id="controls" style="text-align: center; margin-top: 20px;"></div>
+
+    <script>
+        const numCards = 5; // 生成するカードの枚数
+        const cards = [];
+        const results = [];
+        let currentCardIndex = 0;
+
+        function generateBingoCard() {
+            const card = [[], [], [], [], []];
+            const ranges = [
+                { min: 1, max: 15 },
+                { min: 16, max: 30 },
+                { min: 31, max: 45 },
+                { min: 46, max: 60 },
+                { min: 61, max: 75 },
+            ];
+
+            for (let i = 0; i < 5; i++) {
+                const { min, max } = ranges[i];
+                const numbers = new Set();
+
+                while (numbers.size < 5) {
+                    const num = Math.floor(Math.random() * (max - min + 1)) + min;
+                    numbers.add(num);
+                }
+
+                card[i] = Array.from(numbers).sort((a, b) => a - b);
+            }
+            card[2][2] = 'X';
+            return card;
+        }
+
+        function cardsAreEqual(cardA, cardB) {
+            return cardA.flat().join() === cardB.flat().join();
+        }
+
+        function createUniqueCards() {
+            while (cards.length < numCards) {
+                const newCard = generateBingoCard();
+                if (!cards.some(existingCard => cardsAreEqual(existingCard, newCard))) {
+                    cards.push(newCard);
+                    results.push({ marked: Array(5).fill(0).map(() => Array(5).fill(false)), isBingo: false });
+                }
+            }
+        }
+
+        function displayBingoCard(card) {
+            const cardContainer = document.getElementById('bingo-card');
+            cardContainer.innerHTML = '';
+
+            const table = document.createElement('table');
+            for (let row = 0; row < 5; row++) {
+                const tr = document.createElement('tr');
+                for (let col = 0; col < 5; col++) {
+                    const td = document.createElement('td');
+                    td.textContent = card[col][row];
+                    if (col === 2 && row === 2) {
+                        td.className = 'marked';
+                    }
+                    td.addEventListener('click', () => markCell(td, col, row));
+                    tr.appendChild(td);
+                }
+                table.appendChild(tr);
+            }
+            cardContainer.appendChild(table);
+            updateResultText();
+        }
+
+        function markCell(cell, col, row) {
+            if (!cell.classList.contains('marked') && cards[currentCardIndex][col][row] !== 'X') {
+                cell.classList.add('marked');
+                cell.textContent = 'X';
+                results[currentCardIndex].marked[col][row] = true;
+                updateResultText();
+            }
+        }
+
+        function checkBingo() {
+            const markedCells = results[currentCardIndex].marked;
+            const rows = Array(5).fill(0);
+            const cols = Array(5).fill(0);
+            let diagonal1 = 0, diagonal2 = 0;
+
+            markedCells.forEach((row, rowIndex) => {
+                row.forEach((marked, colIndex) => {
+                    if (marked || (rowIndex === 2 && colIndex === 2)) {
+                        rows[rowIndex]++;
+                        cols[colIndex]++;
+                        if (rowIndex === colIndex) diagonal1++;
+                        if (rowIndex + colIndex === 4) diagonal2++;
+                    }
+                });
+            });
+
+            const isBingo = rows.includes(5) || cols.includes(5) || diagonal1 === 5 || diagonal2 === 5;
+            const isReach = rows.includes(4) || cols.includes(4) || diagonal1 === 4 || diagonal2 === 4;
+
+            return { isBingo, isReach };
+        }
+
+        function updateResultText() {
+            const { isBingo, isReach } = checkBingo();
+            const resultText = document.getElementById('result');
+
+            if (isBingo) {
+                resultText.textContent = 'ビンゴしました！';
+            } else if (isReach) {
+                resultText.textContent = 'リーチ！';
+            } else {
+                resultText.textContent = '';
+            }
+        }
+
+        function switchCard(index) {
+            currentCardIndex = index;
+            displayBingoCard(cards[currentCardIndex]);
+            document.getElementById('result').textContent = '';
+        }
+
+        function createCardControls() {
+            const controls = document.getElementById('controls');
+            cards.forEach((_, index) => {
+                const button = document.createElement('button');
+                button.textContent = `カード ${index + 1}`;
+                button.onclick = () => switchCard(index);
+                controls.appendChild(button);
+            });
+        }
+
+        createUniqueCards();
+        createCardControls();
+        displayBingoCard(cards[currentCardIndex]);
+    </script>
+</body>
+</html>
